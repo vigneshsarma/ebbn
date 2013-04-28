@@ -5,15 +5,11 @@
 
 (setq ebbn/ignore-folder-names (list "api"))
 
-(defun print-buffer-list (bf)
-  (if (reduce (lambda (a b)
-		(if (or a (string-equal (substring (buffer-name bf) 0 1) b))
-		    t nil)) (list "*" " ") :initial-value nil)
-      nil
-    bf))
+(defun file-buffer? (bf)
+  (if (buffer-file-name bf) bf nil))
 
 (defun get-file-buffers ()
-  (remove-if 'null (mapcar 'print-buffer-list (buffer-list))))
+  (remove-if nil (mapcar 'file-buffer? (buffer-list))))
 
 ;; buffer rename
 (defun buffer-rename (bf new-name)
@@ -32,6 +28,16 @@
   (let ((path-list (reverse (s-split "/" (buffer-file-name bf)))))
     (parent-file-name path-list)))
 
+(defun give-better-name (&optional buffer)
+  (let* ((bf (if buffer (get-buffer buffer) (current-buffer)))
+	 (bfs (get-file-buffers))
+	 (bf-name (car (reverse (s-split "/" (buffer-file-name bf)))))
+	 (same-file-name? (lambda (a bf-tmp) (or a (s-equals? bf-name
+							      (car (reverse (s-split "/" (buffer-file-name bf-tmp)))))))))
+    (if (reduce same-file-name? bfs :initial-value nil)
+	(buffer-rename bf (format "%s<%s>" bf-name (get-acceptable-parent-name bf))) nil)))
+
+;; (add-hook 'find-file-hook 'give-better-name)
 ;; func to rename buffer
 (defun rename-buffer-when-numericed (bf)
   (if (and (setq bf-match (s-match ebbn/numbered-buffers (buffer-name bf)))
